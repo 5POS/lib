@@ -1,0 +1,140 @@
+-- =============================================
+-- 1. Создание базы данных и выбор её
+-- =============================================
+DROP DATABASE IF EXISTS library_db;
+CREATE DATABASE library_db
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
+USE library_db;
+
+-- =============================================
+-- 2. Таблица пользователей (сотрудников)
+-- =============================================
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role VARCHAR(30) NOT NULL   -- 'ADMIN', 'LIBRARIAN'
+);
+
+-- =============================================
+-- 3. Таблица книг
+-- =============================================
+CREATE TABLE books (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(200) NOT NULL,
+    author VARCHAR(100),
+    isbn VARCHAR(20),
+    year INT,
+    publisher VARCHAR(100),
+    quantity INT NOT NULL DEFAULT 0,
+    available INT NOT NULL DEFAULT 0
+);
+
+-- =============================================
+-- 4. Таблица читателей
+-- =============================================
+CREATE TABLE readers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    card_number VARCHAR(20) UNIQUE NOT NULL,
+    full_name VARCHAR(150) NOT NULL,
+    birth_date DATE,
+    phone VARCHAR(20),
+    address VARCHAR(200),
+    registration_date DATE NOT NULL,
+    active TINYINT(1) DEFAULT 1
+);
+
+-- =============================================
+-- 5. Таблица выдач книг
+-- =============================================
+CREATE TABLE loans (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    book_id INT NOT NULL,
+    reader_id INT NOT NULL,
+    loan_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    return_date DATE,
+    status VARCHAR(20) DEFAULT 'ACTIVE',  -- 'ACTIVE', 'RETURNED', 'OVERDUE'
+    FOREIGN KEY (book_id) REFERENCES books(id),
+    FOREIGN KEY (reader_id) REFERENCES readers(id)
+);
+
+-- =============================================
+-- 6. Таблица заявок на закупку
+-- =============================================
+CREATE TABLE purchase_requests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'NEW',   -- 'NEW', 'RECEIVED'
+    total_items INT DEFAULT 0
+);
+
+-- =============================================
+-- 7. Таблица деталей заявки (товарные позиции)
+-- =============================================
+CREATE TABLE purchase_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    request_id INT NOT NULL,
+    book_title VARCHAR(200) NOT NULL,
+    author VARCHAR(100),
+    isbn VARCHAR(20),
+    year INT,
+    publisher VARCHAR(100),
+    quantity INT NOT NULL,
+    FOREIGN KEY (request_id) REFERENCES purchase_requests(id) ON DELETE CASCADE
+);
+
+-- =============================================
+-- 8. Вставка тестовых данных
+-- =============================================
+
+-- Пользователи (пароли совпадают с логинами для простоты)
+INSERT INTO users (username, password, role) VALUES
+('admin', 'admin', 'ADMIN'),
+('librarian', 'librarian', 'LIBRARIAN'),
+('librarian2', 'lib2', 'LIBRARIAN');
+
+-- Книги
+INSERT INTO books (title, author, isbn, year, publisher, quantity, available) VALUES
+('Война и мир', 'Лев Толстой', '978-5-17-118642-5', 2020, 'АСТ', 5, 4),
+('Преступление и наказание', 'Фёдор Достоевский', '978-5-17-118643-2', 2019, 'Азбука', 3, 2),
+('Мастер и Маргарита', 'Михаил Булгаков', '978-5-17-118644-9', 2021, 'Эксмо', 4, 3),
+('Анна Каренина', 'Лев Толстой', '978-5-17-118645-6', 2018, 'АСТ', 2, 1),
+('Идиот', 'Фёдор Достоевский', '978-5-17-118646-3', 2020, 'Азбука', 3, 3),
+('1984', 'Джордж Оруэлл', '978-5-17-118647-0', 2017, 'АСТ', 6, 5),
+('Улисс', 'Джеймс Джойс', '978-5-17-118648-7', 2016, 'Эксмо', 1, 1);
+
+-- Читатели
+INSERT INTO readers (card_number, full_name, birth_date, phone, address, registration_date, active) VALUES
+('000001', 'Иванов Иван Иванович', '1990-05-12', '+7-900-123-45-67', 'ул. Пушкина, д.10', CURDATE(), 1),
+('000002', 'Петрова Мария Сергеевна', '1995-08-23', '+7-900-234-56-78', 'пр. Ленина, д.5', CURDATE(), 1),
+('000003', 'Сидоров Алексей Викторович', '2000-11-02', '+7-900-345-67-89', 'ул. Гагарина, д.20', CURDATE(), 1),
+('000004', 'Кузнецова Елена Дмитриевна', '1988-03-17', '+7-900-456-78-90', 'б-р Мира, д.3', CURDATE(), 1),
+('000005', 'Михайлов Денис Андреевич', '2003-07-30', '+7-900-567-89-01', 'ул. Советская, д.7', CURDATE(), 0);   -- неактивный
+
+-- Выдачи книг (несколько активных и возвращённых)
+INSERT INTO loans (book_id, reader_id, loan_date, due_date, return_date, status) VALUES
+(1, 1, '2025-04-01', '2025-04-15', NULL, 'ACTIVE'),
+(2, 1, '2025-04-05', '2025-04-19', '2025-04-14', 'RETURNED'),
+(3, 2, '2025-04-10', '2025-04-24', NULL, 'ACTIVE'),
+(4, 3, '2025-03-20', '2025-04-03', '2025-04-02', 'RETURNED'),
+(5, 4, '2025-04-12', '2025-04-26', NULL, 'ACTIVE'),
+(6, 2, '2025-03-15', '2025-03-29', '2025-03-28', 'RETURNED'),
+(7, 3, '2025-04-08', '2025-04-22', NULL, 'ACTIVE'),
+(1, 4, '2025-04-02', '2025-04-16', '2025-04-15', 'RETURNED');
+
+-- Заявки на закупку
+INSERT INTO purchase_requests (request_date, status, total_items) VALUES
+(CURDATE(), 'NEW', 3),
+('2025-03-25', 'RECEIVED', 5);
+
+INSERT INTO purchase_items (request_id, book_title, author, isbn, year, publisher, quantity) VALUES
+(1, 'Современная веб-разработка', 'Дмитрий Петров', '978-5-9999-1111-1', 2023, 'Питер', 3),
+(1, 'Java. Полное руководство', 'Герберт Шилдт', '978-5-9999-2222-2', 2022, 'Вильямс', 2),
+(2, 'Python для начинающих', 'Марк Саммерфилд', '978-5-9999-3333-3', 2021, 'Диалектика', 5);
+
+-- =============================================
+-- 9. Простой тестовый запрос (проверка)
+-- =============================================
+SELECT 'База данных library_db успешно создана и заполнена!' AS status;
